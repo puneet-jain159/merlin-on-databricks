@@ -34,7 +34,17 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -r requirements.txt --extra-index-url=https://pypi.nvidia.com
+# MAGIC %pip install cudf-cu11 dask-cudf-cu11 --extra-index-url=https://pypi.nvidia.com
+# MAGIC %pip install cuml-cu11 --extra-index-url=https://pypi.nvidia.com
+# MAGIC %pip install cugraph-cu11 --extra-index-url=https://pypi.nvidia.com
+
+# COMMAND ----------
+
+# MAGIC %pip install -r requirements.txt
+
+# COMMAND ----------
+
+# MAGIC %pip install s3fs
 
 # COMMAND ----------
 
@@ -49,19 +59,6 @@
 # MAGIC The dataset is available on [Kaggle](https://www.kaggle.com/chadgostopp/recsys-challenge-2015). You need to download it and copy to the `DATA_FOLDER` path. Note that we are only using the `yoochoose-clicks.dat` file.
 # MAGIC 
 # MAGIC First, let's start by importing several libraries:
-
-# COMMAND ----------
-
-import os
-import glob
-import numpy as np
-import gc
-
-import cudf
-import cupy
-import nvtabular as nvt
-from merlin.dag import ColumnSelector
-from merlin.schema import Schema, Tags
 
 # COMMAND ----------
 
@@ -82,7 +79,7 @@ from merlin.schema import Schema, Tags
 
 # COMMAND ----------
 
-### Download Data 
+
 
 # COMMAND ----------
 
@@ -105,8 +102,17 @@ DATA_FOLDER = "/dbfs/merlin/data/"
 FILENAME_PATTERN = 'yoochoose-clicks.dat'
 DATA_PATH = os.path.join(DATA_FOLDER, FILENAME_PATTERN)
 
-OUTPUT_FOLDER  = os.path.join("/dbfs/merlin/data/","output/yoochoose_transformed")
+OUTPUT_FOLDER  = os.path.join("/dbfs/merlin/data/","output/")
 OVERWRITE = False
+
+# COMMAND ----------
+
+!  mkdir /dbfs/merlin/data/output
+
+# COMMAND ----------
+
+!ls /dbfs/merlin/data/output/
+# ! rm -rf /dbfs/merlin/interactions_merged_df.parquet
 
 # COMMAND ----------
 
@@ -154,7 +160,8 @@ interactions_merged_df.head()
 
 # COMMAND ----------
 
-interactions_merged_df.to_parquet(os.path.join(DATA_FOLDER, 'interactions_merged_df.parquet'))
+type(os.path.join(OUTPUT_FOLDER, 'interactions_merged_df.parquet'))
+interactions_merged_df.to_parquet(os.path.join('s3://oetrta/nhs', 'interactions_merged_df.parquet'),index = False)
 
 # COMMAND ----------
 
@@ -356,7 +363,7 @@ sessions_gdf.head()
 
 # COMMAND ----------
 
-workflow.save(os.path.join("/dbfs/merlin/workflow/","workflow_etl"))
+workflow.save(os.path.join("s3://oetrta/nhs","workflow_etl"))
 
 # COMMAND ----------
 
@@ -376,13 +383,17 @@ sessions_gdf = sessions_gdf[sessions_gdf.day_index>=178]
 
 # COMMAND ----------
 
+sessions_gdf.head()
+
+# COMMAND ----------
+
 from utils.date_utils import save_time_based_splits
 
 # COMMAND ----------
 
 # from utils.data_utils import save_time_based_splits
 save_time_based_splits(data=nvt.Dataset(sessions_gdf),
-                       output_dir= os.path.join("/dbfs/merlin/workflow/","output/preproc_sessions_by_day"),
+                       output_dir= os.path.join("s3://oetrta/nhs","output/preproc_sessions_by_day"),
                        partition_col='day_index',
                        timestamp_col='session_id', 
                       )
@@ -403,7 +414,7 @@ def list_files(startpath):
 
 # COMMAND ----------
 
-list_files(os.path.join("/dbfs/merlin/workflow/","output/preproc_sessions_by_day"))
+list_files(os.path.join("s3://oetrta/nhs","output/preproc_sessions_by_day"))
 
 # COMMAND ----------
 
@@ -415,7 +426,3 @@ gc.collect()
 
 # MAGIC %md
 # MAGIC That's it! We created our sequential features, now we can go to the next notebook to train a PyTorch session-based model.
-
-# COMMAND ----------
-
-

@@ -34,7 +34,13 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -r requirements.txt --extra-index-url=https://pypi.nvidia.com
+# MAGIC %pip install cudf-cu11 dask-cudf-cu11 --extra-index-url=https://pypi.nvidia.com
+# MAGIC %pip install cuml-cu11 --extra-index-url=https://pypi.nvidia.com
+# MAGIC %pip install cugraph-cu11 --extra-index-url=https://pypi.nvidia.com
+
+# COMMAND ----------
+
+# MAGIC %pip install merlin-models nvtabular transformers4rec[pytorch,nvtabular,dataloader]
 
 # COMMAND ----------
 
@@ -201,7 +207,7 @@ recsys_trainer = tr.Trainer(
 
 from transformers4rec.torch.utils.examples_utils import fit_and_evaluate
 import os
-OT_results = fit_and_evaluate(recsys_trainer, start_time_index=178, end_time_index=180, input_dir=os.path.join("/dbfs/merlin/workflow/","output/preproc_sessions_by_day"))
+OT_results = fit_and_evaluate(recsys_trainer, start_time_index=178, end_time_index=180, input_dir=os.path.join("/tmp","output/preproc_sessions_by_day"))
 
 # COMMAND ----------
 
