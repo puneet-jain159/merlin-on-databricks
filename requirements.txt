@@ -1,3 +1,4 @@
 merlin-models
 nvtabular
-transformers4rec[pytorch,nvtabular,dataloader]
+transformers4rec[pytorch,nvtabular,dataloader]==23.2.0
+protobuf==3.20.*

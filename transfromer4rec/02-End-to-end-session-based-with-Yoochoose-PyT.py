@@ -1,36 +1,8 @@
 # Databricks notebook source
-# Copyright 2022 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-# Each user is responsible for checking the content of datasets and the
-# applicable licenses and determining if suitable for the intended use.
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC <img src="https://developer.download.nvidia.com/notebooks/dlsw-notebooks/merlin_transformers4rec_end-to-end-session-based-02-end-to-end-session-based-with-yoochoose-pyt/nvidia_logo.png" style="width: 90px; float: right;">
-# MAGIC 
+# MAGIC
 # MAGIC # End-to-end session-based recommendations with PyTorch
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC **Start a GPU CLuster and run the below magic commmand**
-# MAGIC ```
-# MAGIC %pip install -r requirements.txt --extra-index-url=https://pypi.nvidia.com
-# MAGIC ```
 
 # COMMAND ----------
 
@@ -40,15 +12,19 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install merlin-models nvtabular transformers4rec[pytorch,nvtabular,dataloader]
+# MAGIC %pip install -r ../requirements.txt
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC In recent years, several deep learning-based algorithms have been proposed for recommendation systems while its adoption in industry deployments have been steeply growing. In particular, NLP inspired approaches have been successfully adapted for sequential and session-based recommendation problems, which are important for many domains like e-commerce, news and streaming media. Session-Based Recommender Systems (SBRS) have been proposed to model the sequence of interactions within the current user session, where a session is a short sequence of user interactions typically bounded by user inactivity. They have recently gained popularity due to their ability to capture short-term or contextual user preferences towards items. 
-# MAGIC 
+# MAGIC
 # MAGIC The field of NLP has evolved significantly within the last decade, particularly due to the increased usage of deep learning. As a result, state of the art NLP approaches have inspired RecSys practitioners and researchers to adapt those architectures, especially for sequential and session-based recommendation problems. Here, we leverage one of the state-of-the-art Transformer-based architecture, [XLNet](https://arxiv.org/abs/1906.08237) with Masked Language Modeling (MLM) training technique (see our [tutorial](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples/tutorial) for details) for training a session-based model.
-# MAGIC 
+# MAGIC
 # MAGIC In this end-to-end-session-based recommnender model example, we use `Transformers4Rec` library, which leverages the popular [HuggingFace’s Transformers](https://github.com/huggingface/transformers) NLP library and make it possible to experiment with cutting-edge implementation of such architectures for sequential and session-based recommendation problems. For detailed explanations of the building blocks of Transformers4Rec meta-architecture visit [getting-started-session-based](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples/getting-started-session-based) and [tutorial](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples/tutorial) example notebooks.
 
 # COMMAND ----------
@@ -74,7 +50,7 @@
 # COMMAND ----------
 
 from utils.merlin_utils import Schema
-SCHEMA_PATH = "schema_demo.pb"
+SCHEMA_PATH = "../schema_demo.pb"
 schema = Schema().from_proto_text(SCHEMA_PATH)
 !cat $SCHEMA_PATH
 
@@ -98,13 +74,13 @@ schema = schema.select_by_name(
 
 # MAGIC %md
 # MAGIC For defining a session-based recommendation model, the end-to-end model definition requires four steps:
-# MAGIC 
+# MAGIC
 # MAGIC 1. Instantiate [TabularSequenceFeatures](https://nvidia-merlin.github.io/Transformers4Rec/main/api/transformers4rec.tf.features.html?highlight=tabularsequence#transformers4rec.tf.features.sequence.TabularSequenceFeatures) input-module from schema to prepare the embedding tables of categorical variables and project continuous features, if specified. In addition, the module provides different aggregation methods (e.g. 'concat', 'elementwise-sum') to merge input features and generate the sequence of interactions embeddings. The module also supports language modeling tasks to prepare masked labels for training and evaluation (e.g: 'mlm' for masked language modeling) 
-# MAGIC 
+# MAGIC
 # MAGIC 2. Next, we need to define one or multiple prediction tasks. For this demo, we are going to use [NextItemPredictionTask](https://nvidia-merlin.github.io/Transformers4Rec/main/api/transformers4rec.tf.model.html?highlight=nextitem#transformers4rec.tf.model.prediction_task.NextItemPredictionTask) with `Masked Language modeling`: during training, randomly selected items are masked and predicted using the unmasked sequence items. For inference, it is meant to always predict the next item to be interacted with.
-# MAGIC 
+# MAGIC
 # MAGIC 3. Then we construct a `transformer_config` based on the architectures provided by [Hugging Face Transformers](https://github.com/huggingface/transformers) framework. </a>
-# MAGIC 
+# MAGIC
 # MAGIC 4. Finally we link the transformer-body to the inputs and the prediction tasks to get the final pytorch `Model` class.
 # MAGIC     
 # MAGIC For more details about the features supported by each sub-module, please check out the library [documentation](https://nvidia-merlin.github.io/Transformers4Rec/main/index.html) page.
@@ -207,7 +183,7 @@ recsys_trainer = tr.Trainer(
 
 from transformers4rec.torch.utils.examples_utils import fit_and_evaluate
 import os
-OT_results = fit_and_evaluate(recsys_trainer, start_time_index=178, end_time_index=180, input_dir=os.path.join("/tmp","output/preproc_sessions_by_day"))
+OT_results = fit_and_evaluate(recsys_trainer, start_time_index=59, end_time_index=62, input_dir="/local_disk0/merlin/data/output/preproc_sessions_by_day")
 
 # COMMAND ----------
 
@@ -249,9 +225,9 @@ recsys_trainer._save_model_and_checkpoint(save_model_class=True)
 
 # MAGIC %md
 # MAGIC - Merlin Transformers4rec: https://github.com/NVIDIA-Merlin/Transformers4Rec
-# MAGIC 
+# MAGIC
 # MAGIC - Merlin NVTabular: https://github.com/NVIDIA-Merlin/NVTabular/tree/main/nvtabular
-# MAGIC 
+# MAGIC
 # MAGIC - Merlin Dataloader: https://github.com/NVIDIA-Merlin/dataloader
-# MAGIC 
+# MAGIC
 # MAGIC - Triton inference server: https://github.com/triton-inference-server

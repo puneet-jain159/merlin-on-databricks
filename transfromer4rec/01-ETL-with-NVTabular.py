@@ -21,11 +21,11 @@
 
 # MAGIC %md
 # MAGIC <img src="https://developer.download.nvidia.com/notebooks/dlsw-notebooks/merlin_transformers4rec_end-to-end-session-based-01-etl-with-nvtabular/nvidia_logo.png" style="width: 90px; float: right;">
-# MAGIC 
+# MAGIC
 # MAGIC # ETL with NVTabular
-# MAGIC 
+# MAGIC
 # MAGIC This notebook is created using the latest stable [merlin-pytorch](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-pytorch) container.
-# MAGIC 
+# MAGIC
 # MAGIC **Start a GPU CLuster and run the below magic commmand**
 # MAGIC ```
 # MAGIC %pip install -r requirements.txt --extra-index-url=https://pypi.nvidia.com
@@ -40,11 +40,11 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -r requirements.txt
+# MAGIC %pip install -r ../requirements.txt
 
 # COMMAND ----------
 
-# MAGIC %pip install s3fs
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
@@ -55,9 +55,9 @@
 
 # MAGIC %md
 # MAGIC This notebook demonstrates how to use NVTabular to perform the feature engineering that is needed to model the `YOOCHOOSE` dataset which contains a collection of sessions from a retailer. Each session  encapsulates the click events that the user performed in that session.
-# MAGIC 
+# MAGIC
 # MAGIC The dataset is available on [Kaggle](https://www.kaggle.com/chadgostopp/recsys-challenge-2015). You need to download it and copy to the `DATA_FOLDER` path. Note that we are only using the `yoochoose-clicks.dat` file.
-# MAGIC 
+# MAGIC
 # MAGIC First, let's start by importing several libraries:
 
 # COMMAND ----------
@@ -101,18 +101,9 @@ import os
 DATA_FOLDER = "/dbfs/merlin/data/"
 FILENAME_PATTERN = 'yoochoose-clicks.dat'
 DATA_PATH = os.path.join(DATA_FOLDER, FILENAME_PATTERN)
-
-OUTPUT_FOLDER  = os.path.join("/dbfs/merlin/data/","output/")
+OUTPUT_PATH = "/local_disk0/merlin/data/"
+OUTPUT_FOLDER  = os.path.join(OUTPUT_PATH,"output/")
 OVERWRITE = False
-
-# COMMAND ----------
-
-!  mkdir /dbfs/merlin/data/output
-
-# COMMAND ----------
-
-!ls /dbfs/merlin/data/output/
-# ! rm -rf /dbfs/merlin/interactions_merged_df.parquet
 
 # COMMAND ----------
 
@@ -160,13 +151,21 @@ interactions_merged_df.head()
 
 # COMMAND ----------
 
-type(os.path.join(OUTPUT_FOLDER, 'interactions_merged_df.parquet'))
-interactions_merged_df.to_parquet(os.path.join('s3://oetrta/nhs', 'interactions_merged_df.parquet'),index = False)
+# ! mkdir -p {OUTPUT_FOLDER}
+!rm -rf  {OUTPUT_FOLDER}
+
+# COMMAND ----------
+
+interactions_merged_df.to_parquet(os.path.join(OUTPUT_FOLDER, 'interactions_merged_df/'),index = False,engine="pyarrow",row_group_size_bytes=67108864/4)
+
+# COMMAND ----------
+
+os.path.join(OUTPUT_FOLDER, 'interactions_merged_df.parquet')
 
 # COMMAND ----------
 
 # free gpu memory
-del interactions_df, session_past_ids, items_first_ts_df
+del interactions_df, session_past_ids, items_first_ts_df,interactions_merged_df
 gc.collect()
 
 # COMMAND ----------
@@ -178,9 +177,9 @@ gc.collect()
 
 # MAGIC %md
 # MAGIC NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.
-# MAGIC 
+# MAGIC
 # MAGIC NVTabular supports different feature engineering transformations required by deep learning (DL) models such as Categorical encoding and numerical feature normalization. It also supports feature engineering and generating sequential features. 
-# MAGIC 
+# MAGIC
 # MAGIC More information about the supported features can be found <a href="https://nvidia-merlin.github.io/NVTabular/main/index.html> here. </a">
 
 # COMMAND ----------
@@ -192,11 +191,11 @@ gc.collect()
 
 # MAGIC %md
 # MAGIC In this cell, we are defining three transformations ops: 
-# MAGIC 
+# MAGIC
 # MAGIC - 1. Encoding categorical variables using `Categorify()` op. We set `start_index` to 1 so that encoded null values start from `1` instead of `0` because we reserve `0` for padding the sequence features.
 # MAGIC - 2. Deriving temporal features from timestamp and computing their cyclical representation using a custom lambda function. 
 # MAGIC - 3. Computing the item recency in days using a custom op. Note that item recency is defined as the difference between the first occurrence of the item in dataset and the actual date of item interaction. 
-# MAGIC 
+# MAGIC
 # MAGIC For more ETL workflow examples, visit NVTabular [example notebooks](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples).
 
 # COMMAND ----------
@@ -340,7 +339,7 @@ config.CUDA_LOW_OCCUPANCY_WARNINGS = 0
 
 # COMMAND ----------
 
-dataset = nvt.Dataset(interactions_merged_df)
+dataset = nvt.Dataset(os.path.join(OUTPUT_FOLDER, 'interactions_merged_df/'),engine="parquet",part_size="16MB")
 workflow = nvt.Workflow(filtered_sessions)
 # Learn features statistics necessary of the preprocessing workflow
 workflow.fit(dataset)
@@ -363,7 +362,7 @@ sessions_gdf.head()
 
 # COMMAND ----------
 
-workflow.save(os.path.join("s3://oetrta/nhs","workflow_etl"))
+workflow.save(os.path.join(OUTPUT_FOLDER,"workflow_etl"))
 
 # COMMAND ----------
 
@@ -379,7 +378,7 @@ workflow.save(os.path.join("s3://oetrta/nhs","workflow_etl"))
 
 # COMMAND ----------
 
-sessions_gdf = sessions_gdf[sessions_gdf.day_index>=178]
+sessions_gdf = sessions_gdf[sessions_gdf.day_index>=59]
 
 # COMMAND ----------
 
@@ -393,7 +392,7 @@ from utils.date_utils import save_time_based_splits
 
 # from utils.data_utils import save_time_based_splits
 save_time_based_splits(data=nvt.Dataset(sessions_gdf),
-                       output_dir= os.path.join("s3://oetrta/nhs","output/preproc_sessions_by_day"),
+                       output_dir= os.path.join(OUTPUT_FOLDER,"preproc_sessions_by_day"),
                        partition_col='day_index',
                        timestamp_col='session_id', 
                       )
@@ -414,7 +413,7 @@ def list_files(startpath):
 
 # COMMAND ----------
 
-list_files(os.path.join("s3://oetrta/nhs","output/preproc_sessions_by_day"))
+list_files(os.path.join(OUTPUT_FOLDER,"preproc_sessions_by_day"))
 
 # COMMAND ----------
 
@@ -426,3 +425,7 @@ gc.collect()
 
 # MAGIC %md
 # MAGIC That's it! We created our sequential features, now we can go to the next notebook to train a PyTorch session-based model.
+
+# COMMAND ----------
+
+
