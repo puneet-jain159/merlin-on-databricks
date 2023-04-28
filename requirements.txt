@@ -1,7 +1,4 @@
-cudf-cu11 --extra-index-url=https://pypi.nvidia.com
-dask-cudf-cu11 --extra-index-url=https://pypi.nvidia.com
-cuml-cu11 --extra-index-url=https://pypi.nvidia.com
-cugraph-cu11 --extra-index-url=https://pypi.nvidia.com
 merlin-models
 nvtabular
-transformers4rec[pytorch,nvtabular,dataloader]
+transformers4rec[pytorch,nvtabular,dataloader]==23.2.0
+protobuf==3.20.*

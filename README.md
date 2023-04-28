@@ -1,4 +1,4 @@
-# Nvidia Merlin on Databricks
-This is a Repo to test Nvidia Merlin on Databricks
+# merlin-on-databricks
+This is a Repo to test Nvidia Merlin on Databricks </br>
+This has been tested on  ML 13 LTS (GPU Enabled) 
 
-This has been tested on 11.3 LTS
